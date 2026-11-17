@@ -997,6 +997,33 @@ fun NewFieldReportSheet(
         }
     }
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            try {
+                cameraLauncher.launch(null)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Gagal membuka kamera: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "Izin kamera ditolak. Silakan pilih foto dari galeri.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(it)
+                capturedBitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Gagal memuat gambar dari galeri", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     ModalBottomSheet(onDismissRequest = onDismiss) {
         LazyColumn(
             modifier = Modifier
@@ -1078,20 +1105,33 @@ fun NewFieldReportSheet(
             }
 
             item {
-                OutlinedButton(
-                    onClick = {
-                        try {
-                            cameraLauncher.launch(null)
-                        } catch (e: Exception) {
-                            Toast.makeText(context, "Kamera tidak tersedia pada emulator ini", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Filled.CameraAlt, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (capturedBitmap != null) "Foto Terlampir (Ambil Ulang)" else "Ambil Foto Dokumentasi Bibit")
+                    OutlinedButton(
+                        onClick = {
+                            permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Kamera", fontSize = 12.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            galleryLauncher.launch("image/*")
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Filled.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Galeri", fontSize = 12.sp)
+                    }
                 }
 
                 capturedBitmap?.let { bmp ->
